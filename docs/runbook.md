@@ -120,42 +120,48 @@ docker compose logs -f --tail=50 orchestrator
 
 ## Backup and Recovery
 
-### Nightly Backup Script
+### Nightly Backup Script (Cloudflare R2)
 
 ```bash
-#!/bin/bash
-# nightly_backup.sh - Sync Weaviate data to R2 storage
+#!/usr/bin/env bash
+# nightly_backup.sh - Sync Weaviate data to Cloudflare R2 storage
 
-set -e
+set -euo pipefail
 
 # Configuration
-BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-WEAVIATE_DATA_PATH="./weaviate_data"
-R2_BUCKET="s3://your-backup-bucket"
-R2_PREFIX="qstash-pipeline-backups"
+BACKUP_DATE=$(date +%Y-%m-%d_%H-%M-%S)
+WEAVIATE_DATA_PATH="./infra/weaviate_data"
+R2_BUCKET="trading-backups"
 
-# Create backup
+# Configure rclone for Cloudflare R2
+export RCLONE_CONFIG_R2_TYPE=s3
+export RCLONE_CONFIG_R2_PROVIDER=Cloudflare
+export RCLONE_CONFIG_R2_ACCESS_KEY_ID="${R2_KEY}"
+export RCLONE_CONFIG_R2_SECRET_ACCESS_KEY="${R2_SECRET}"
+export RCLONE_CONFIG_R2_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
 echo "Starting backup at $(date)"
 
 # Stop Weaviate to ensure consistent backup
 docker compose stop weaviate
 
-# Sync to R2 with deep archive storage class
-aws s3 cp "${WEAVIATE_DATA_PATH}" "${R2_BUCKET}/${R2_PREFIX}/${BACKUP_DATE}/" \
-  --recursive \
-  --storage-class DEEP_ARCHIVE \
+# Sync to R2 with progress and parallel transfers
+rclone copy "${WEAVIATE_DATA_PATH}" "R2:${R2_BUCKET}/weaviate-data/${BACKUP_DATE}" \
+  --progress \
+  --transfers 8 \
   --exclude "*.tmp" \
   --exclude "*.lock"
 
 # Restart Weaviate
 docker compose start weaviate
 
-echo "Backup completed: ${R2_BUCKET}/${R2_PREFIX}/${BACKUP_DATE}/"
-
-# Cleanup old local backups (keep last 7 days)
-find ./backups -name "weaviate_*" -mtime +7 -delete 2>/dev/null || true
-
+echo "Backup completed: R2:${R2_BUCKET}/weaviate-data/${BACKUP_DATE}"
 echo "Backup process finished at $(date)"
+
+# Benefits of Cloudflare R2:
+# - Zero egress fees (unlike AWS S3)
+# - Free tier: 10 GB storage + 1M Class-A operations
+# - Native integration with Cloudflare ecosystem
 ```
 
 ### Recovery Procedures
@@ -334,9 +340,11 @@ du -sh ./weaviate_data
 
 ### Environment Setup
 - [ ] 1. `.env` file contains QSTASH_URL, QSTASH_TOKEN, QSTASH_SIGNING_KEY
-- [ ] 2. `.env` file is in `.gitignore`
-- [ ] 3. Docker Desktop is running
-- [ ] 4. VS Code DevContainer extensions installed
+- [ ] 2. `.env` file contains R2_ACCOUNT_ID, R2_KEY, R2_SECRET for backups
+- [ ] 3. `.env` file is in `.gitignore`
+- [ ] 4. Docker Desktop is running
+- [ ] 5. VS Code DevContainer extensions installed
+- [ ] 6. rclone installed and configured for Cloudflare R2
 
 ### Build and Infrastructure
 - [ ] 5. `docker compose build` completes without errors

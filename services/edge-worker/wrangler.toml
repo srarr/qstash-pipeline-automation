@@ -4,5 +4,5 @@ compatibility_date = "2024-01-01"
 
 [[kv_namespaces]]
 binding = "URLS"
-id = "your_kv_namespace_id"
-preview_id = "your_preview_kv_namespace_id"
+id = "5949fb525ffc4b49ade8de73c4db1a21"
+preview_id = "17439a37a4c04b5d9284c96ab39bc78d"

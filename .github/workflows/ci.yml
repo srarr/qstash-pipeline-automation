@@ -45,6 +45,12 @@ jobs:
     - name: Run unit tests
       run: pytest -q
       
+    - name: Install rclone
+      run: curl -fsSL https://rclone.org/install.sh | sudo bash
+      
+    - name: Backup script dry-run
+      run: bash nightly_backup.sh --dry-run || true
+      
     - name: Build Docker images
       run: docker compose -f infra/docker-compose.yml build
       
