@@ -1,0 +1,15 @@
+pytest==7.4.0
+pytest-asyncio==0.21.0
+httpx[cli]==0.25.0
+respx==0.20.0
+ruff==0.1.0
+black==23.9.0
+fastapi==0.104.0
+uvicorn[standard]==0.24.0
+polars[all]==0.19.0
+sentence-transformers==2.2.2
+vectorbt==0.25.0
+yfinance==0.2.18
+weaviate-client==3.25.0
+pyjwt[crypto]==2.8.0
+redis==5.0.0

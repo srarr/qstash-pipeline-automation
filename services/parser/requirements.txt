@@ -1,0 +1,4 @@
+polars[all]==0.19.0
+sentence-transformers==2.2.2
+msgspec==0.18.0
+pytest==7.4.0

@@ -1,0 +1,16 @@
+{
+  "name": "qstash-edge-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for concept processing",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0",
+    "jest": "^29.0.0",
+    "@jest/globals": "^29.0.0"
+  }
+}

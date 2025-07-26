@@ -1,0 +1,18 @@
+{
+  "name": "qstash-pipeline",
+  "dockerComposeFile": ["../infra/docker-compose.yml"],
+  "service": "orchestrator",
+  "workspaceFolder": "/workspace",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/python:1": {"version": "3.11"}
+  },
+  "postCreateCommand": "pip install -r requirements-dev.txt",
+  "extensions": [
+    "github.copilot",
+    "kyouko-kujira.kiro",
+    "ms-python.black-formatter",
+    "charliermarsh.ruff"
+  ],
+  "remoteUser": "vscode"
+}

@@ -1,0 +1,65 @@
+version: "3.9"
+
+networks:
+  cogv: {}
+
+services:
+  redis:
+    image: redis:7-alpine
+    networks: [cogv]
+    volumes: [redis_data:/data]
+    ports: ["6379:6379"]
+
+  weaviate:
+    image: semitechnologies/weaviate:1.25.4
+    ports: ["8080:8080"]
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+    volumes: [weaviate_data:/var/lib/weaviate]
+    networks: [cogv]
+
+  orchestrator:
+    build: ../services/orchestrator
+    ports: ["8000:8000"]
+    environment:
+      - QSTASH_SIGNING_KEY=${QSTASH_SIGNING_KEY}
+      - WEAVIATE_URL=http://weaviate:8080
+      - REDIS_URL=redis://redis:6379
+    depends_on: [weaviate, redis]
+    networks: [cogv]
+    volumes:
+      - /workspace:/workspace
+
+  crawler:
+    build: ../services/crawler
+    environment:
+      - QSTASH_URL=${QSTASH_URL}
+      - QSTASH_TOKEN=${QSTASH_TOKEN}
+      - REDIS_URL=redis://redis:6379
+    depends_on: [redis]
+    networks: [cogv]
+
+  parser:
+    build: ../services/parser
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on: [redis]
+    networks: [cogv]
+
+  validator:
+    build: ../services/validator
+    runtime: nvidia
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+    networks: [cogv]
+
+volumes:
+  redis_data:
+  weaviate_data:
