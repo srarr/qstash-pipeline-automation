@@ -1,0 +1,62 @@
+groups:
+  - name: qstash-pipeline-alerts
+    rules:
+      # Weaviate memory usage alert
+      - alert: WeaviateHighMemoryUsage
+        expr: (weaviate_memory_heap_used_bytes / weaviate_memory_heap_max_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Weaviate memory usage is high"
+          description: "Weaviate heap usage is {{ $value }}% which is above 80% threshold"
+
+      # Service down alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 2 minutes"
+
+      # QStash rate limiting protection
+      - alert: QStashRateLimitApproaching
+        expr: increase(qstash_messages_sent_total[1h]) > 400
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "QStash message rate approaching daily limit"
+          description: "Sent {{ $value }} messages in the last hour, approaching 500/day limit"
+
+      # R2 storage usage (simulated - would need custom metrics)
+      - alert: R2StorageHigh
+        expr: r2_storage_used_gb > 8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "R2 storage usage approaching free tier limit"
+          description: "R2 storage usage is {{ $value }}GB, approaching 10GB free tier limit"
+
+      # Docker container resource usage
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Container {{ $labels.name }} CPU usage is {{ $value }}%"
+
+      # GPU validator performance
+      - alert: ValidatorProcessingDelay
+        expr: validator_processing_time_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Validator processing is slow"
+          description: "Validator taking {{ $value }} seconds to process, may indicate GPU issues"
