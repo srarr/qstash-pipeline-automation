@@ -1,14 +1,13 @@
 version: "3.9"
 
-# Production monitoring stack
+# Production monitoring stack with free-tier quota tracking
 services:
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.52.0
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml
+      - ./monitor/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -17,33 +16,55 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    environment:
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - QSTASH_TOKEN=${QSTASH_TOKEN}
     networks: [cogv]
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.0.0
     ports:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
-      - ./monitoring/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
-      - ./monitoring/dashboards:/var/lib/grafana/dashboards
+      - ./monitor/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitor/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
     networks: [cogv]
 
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.0.0
     ports:
       - "3100:3100"
     volumes:
-      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml
+      - ./monitor/loki:/etc/loki
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
+    networks: [cogv]
+
+  # Custom exporter for R2 and QStash metrics
+  quota-exporter:
+    build:
+      context: ./monitor/quota-exporter
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_KEY=${R2_KEY}
+      - R2_SECRET=${R2_SECRET}
+      - QSTASH_TOKEN=${QSTASH_TOKEN}
     networks: [cogv]
 
 volumes:
   prometheus_data:
   grafana_data:
   loki_data:
+
+networks:
+  cogv:
+    external: true

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Load test script for 50 concepts/day validation
+# Load test script for 50 concepts/day validation with monitoring
 
 set -euo pipefail
 
@@ -11,12 +11,14 @@ DELAY_SECONDS="${DELAY_SECONDS:-30}"
 
 if [[ -z "$QSTASH_TOKEN" ]]; then
     echo "ERROR: QSTASH_TOKEN environment variable is required"
+    echo "Set it with: export QSTASH_TOKEN=your_token_here"
     exit 1
 fi
 
 echo "🚀 Starting load test: $MAX_CONCEPTS concepts with ${DELAY_SECONDS}s delay"
 echo "📊 Monitor QStash free-tier usage at: https://console.upstash.com"
-echo "📈 Monitor system metrics at: http://localhost:3000"
+echo "📈 Monitor system metrics at: http://localhost:3000 (admin/admin)"
+echo "🔍 Watch quota gauges in Grafana dashboard"
 echo ""
 
 # Test concepts array
@@ -35,6 +37,14 @@ concepts=(
 
 success_count=0
 error_count=0
+
+# Start monitoring if not already running
+if ! curl -s http://localhost:3000 > /dev/null 2>&1; then
+    echo "🔧 Starting monitoring stack..."
+    docker compose -f infra/docker-compose.yml -f docker-compose.override.yml up -d prometheus grafana loki quota-exporter
+    echo "⏳ Waiting for Grafana to start..."
+    sleep 10
+fi
 
 for i in $(seq 1 $MAX_CONCEPTS); do
     concept_index=$((($i - 1) % ${#concepts[@]}))
@@ -78,6 +88,7 @@ EOF
         echo "   ✅ Success: $success_count"
         echo "   ❌ Errors: $error_count"
         echo "   📈 Success rate: $(( success_count * 100 / i ))%"
+        echo "   📈 Check Grafana: http://localhost:3000"
         echo ""
     fi
 done
@@ -90,13 +101,15 @@ echo "   ✅ Successful: $success_count"
 echo "   ❌ Failed: $error_count"
 echo "   📈 Success rate: $(( success_count * 100 / MAX_CONCEPTS ))%"
 echo ""
-echo "📋 Next steps:"
-echo "   1. Monitor QStash console for message processing"
-echo "   2. Check Grafana dashboard: http://localhost:3000"
-echo "   3. Verify Weaviate storage: curl http://localhost:8080/v1/objects"
-echo "   4. Watch orchestrator logs: docker compose logs -f orchestrator"
+echo "📋 Monitoring Dashboard:"
+echo "   🎛️  Grafana: http://localhost:3000 (admin/admin)"
+echo "   📊 Prometheus: http://localhost:9090"
+echo "   📝 Loki: http://localhost:3100"
 echo ""
-echo "⚠️  Free tier limits:"
-echo "   - QStash: 500 messages/day"
-echo "   - R2: 10 GB storage + 1M Class-A operations"
-echo "   - Current test used: $success_count messages"
+echo "📈 Free Tier Usage:"
+echo "   - QStash: $success_count/500 messages used today"
+echo "   - R2: Check storage gauge in Grafana"
+echo "   - Monitor quota alerts in dashboard"
+echo ""
+echo "🛑 To stop monitoring:"
+echo "   docker compose -f infra/docker-compose.yml -f docker-compose.override.yml stop prometheus grafana loki quota-exporter"

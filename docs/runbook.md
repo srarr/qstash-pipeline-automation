@@ -48,6 +48,26 @@ git add --chmod=+x nightly_backup.sh
 git add --chmod=+x setup-git-hooks.sh
 ```
 
+### Monitoring Stack
+
+```bash
+# Start monitoring (Prometheus + Grafana + Loki)
+docker compose -f infra/docker-compose.yml -f docker-compose.override.yml up -d prometheus grafana loki quota-exporter
+
+# Stop monitoring (keep core services running)
+docker compose -f infra/docker-compose.yml -f docker-compose.override.yml stop prometheus grafana loki quota-exporter
+
+# Access dashboards
+echo "Grafana: http://localhost:3000 (admin/admin)"
+echo "Prometheus: http://localhost:9090"
+echo "Loki: http://localhost:3100"
+
+# Run load test with monitoring
+export QSTASH_TOKEN="your_token_here"
+chmod +x load-test.sh
+./load-test.sh
+```
+
 ## QStash Integration Examples
 
 ### Manual Message Publishing

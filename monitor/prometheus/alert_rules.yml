@@ -1,0 +1,55 @@
+groups:
+  - name: quota_alerts
+    rules:
+      # R2 Storage quota alert at 80% of 10GB free tier
+      - alert: R2Quota80Percent
+        expr: (r2_storage_bytes / 10737418240) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: r2_storage
+        annotations:
+          summary: "R2 storage usage is {{ $value | printf \"%.1f\" }}% (>80% of free tier)"
+          description: "R2 storage usage is {{ $value | printf \"%.1f\" }}% of 10GB free tier limit"
+
+      # QStash usage alert at 90% of 500 messages/day
+      - alert: QStashQuota90Percent
+        expr: ((500 - qstash_daily_remaining) / 500) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          service: qstash
+        annotations:
+          summary: "QStash daily usage is {{ $value | printf \"%.1f\" }}% (>90% of free tier)"
+          description: "QStash has used {{ $value | printf \"%.1f\" }}% of 500 messages/day free tier"
+
+      # Weaviate memory usage alert
+      - alert: WeaviateHighMemoryUsage
+        expr: (weaviate_memory_heap_used_bytes / weaviate_memory_heap_max_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: weaviate
+        annotations:
+          summary: "Weaviate memory usage is high"
+          description: "Weaviate heap usage is {{ $value | printf \"%.1f\" }}% which is above 80% threshold"
+
+      # Service down alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 2 minutes"
+
+      # Container resource usage
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Container {{ $labels.name }} CPU usage is {{ $value | printf \"%.1f\" }}%"
